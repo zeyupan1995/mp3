@@ -1,11 +1,13 @@
 import numpy as np
+import math
+from matplotlib import mpl
 from matplotlib import pyplot as plt
 
 # Perceptron classifier
 
 class Perceptron():
 
-    def __init__(self, weight_mode, bias_mode, order, round):
+    def __init__(self, weight_mode, bias_mode, order, round, learning_rate_decay_function):
         self.train_image_list = []
         self.train_label_list = []
         self.test_image_list = []
@@ -19,6 +21,7 @@ class Perceptron():
         self.training_curve = []
         self.train_accurate_number = 0
         self.test_accurate_number = 0
+        self.lrdf = learning_rate_decay_function
         self.confusion_matrix = [[0 for col in range(10)] for row in range(10)]
 
 
@@ -69,6 +72,8 @@ class Perceptron():
 
         t = 0
         count = 0
+        learning_rate = 1
+
         for t in range(0, self.round):
 
             for i in order:
@@ -85,16 +90,22 @@ class Perceptron():
 
                 if predicted != expected:
                     for k in range(0, 32 * 32 + self.bias_mode):
-                        self.weight[expected][k] += self.train_image_list[i][k]
-                        self.weight[predicted][k] -= self.train_image_list[i][k]
+                        self.weight[expected][k] += learning_rate * self.train_image_list[i][k]
+                        self.weight[predicted][k] -= learning_rate * self.train_image_list[i][k]
                 else:
                     self.train_accurate_number += 1
 
                 count += 1
 
-                self.training_curve.append(self.train_accurate_number / float(count))
+            self.training_curve.append(self.train_accurate_number / float(len(self.train_label_list)))
 
             t += 1
+            self.train_accurate_number = 0
+
+            if self.lrdf == "polinomial_decay":
+                learning_rate *= 1 / t
+            elif self.lrdf == "exponential_decay":
+                learning_rate *= math.exp(1 / t)
 
 
     def test(self):
@@ -122,29 +133,45 @@ class Perceptron():
 
     def calculate_accuracy(self):
 
-        print "Training curve:"
-        print self.training_curve
+        # print "Training curve:"
+        # print self.training_curve
+        #
+        # print "Overall Accuracy:"
+        # print float(self.test_accurate_number) / len(self.test_label_list)
 
-        print "Overall Accuracy:"
-        print float(self.test_accurate_number) / len(self.test_label_list)
+        # print "Confusion Matrix:"
+        # print self.confusion_matrix
 
-        print "Confusion Matrix:"
-        print self.confusion_matrix
+        for i in range(0, 10):
 
-        fig, ax = plt.subplots()
-        t = np.arange(0, len(self.training_curve))
-        ax.plot(t, self.training_curve)
+            image = [[0 for col in range(32)] for row in range(32)]
+            for m in range(0, 32):
+                for n in range(0,32):
+                    image[m][n] = self.weight[i][m * 32 + n]
 
-        ax.set(xlabel='echos', ylabel='accuracy',
-               title='Training curve')
-        ax.grid()
+            image = np.asarray(image)
 
-        fig.savefig("perceptron_train_curve.png")
-        plt.show()
+            norm = mpl.colors.Normalize(vmin=-1, vmax=1)
+            im = plt.imshow(image, interpolation="nearest")
+            plt.colorbar(im, norm = norm)
+            plt.show()
+            plt.savefig(str(i) + '00.png')
+
+        # fig, ax = plt.subplots()
+        # t = np.arange(0, self.round)
+        # ax.plot(t, self.training_curve)
+        #
+        # ax.set(xlabel='echos', ylabel='accuracy',
+        #        title='Training curve')
+        # ax.grid()
+        #
+        # fig.savefig("perceptron_train_curve.png")
+        # plt.show()
+
 
 # train data
 
-classifier = Perceptron(0, 0, "fixed", 2)
+classifier = Perceptron(1, 1, "fixed", 30, "polinomial_decay")
 classifier.data_reader("digitdata/optdigits-orig_train.txt", "train")
 classifier.train()
 
