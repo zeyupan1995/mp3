@@ -1,3 +1,11 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# @Time    : 4/5/18 4:53 PM
+# @Author  : Hanfei Lin
+# @Site    : 
+# @File    : Differentiable_Perceptron.py
+# @Software: PyCharm Community Edition
+
 import numpy as np
 import math
 from matplotlib import mpl
@@ -70,11 +78,11 @@ class Perceptron():
         else:
             self.initial_weight_to_random(self.__bias_mode)
 
-        # t = 1
+        t = 0
         count = 0
         learning_rate = 1
 
-        for t in range(1, self.__round + 1):
+        for t in range(0, self.__round):
 
             for i in order:
 
@@ -83,7 +91,15 @@ class Perceptron():
                 max_score = 0
 
                 for j in range(0, len(self.__weight)):
-                    score = np.dot(self.__train_image_list[i], self.__weight[j])
+
+                    numerator = math.exp(np.dot(self.__train_image_list[i], self.__weight[j]) / 1000)
+                    denominator = 0
+
+                    for w in self.__weight:
+                        denominator += math.exp(np.dot(self.__train_image_list[i], w) / 1000)
+
+                    score = numerator / float(denominator)
+
                     if score > max_score:
                         max_score = score
                         predicted = j
@@ -99,7 +115,7 @@ class Perceptron():
 
             self.__training_curve.append(self.__train_accurate_number / float(len(self.__train_label_list)))
 
-            # t += 1
+            t += 1
             self.__train_accurate_number = 0
 
             if self.__lrdf == "polinomial_decay":
@@ -121,7 +137,15 @@ class Perceptron():
             max_score = 0
 
             for j in range(0, len(self.__weight)):
-                score = np.dot(self.__test_image_list[i], self.__weight[j])
+
+                numerator = math.exp(np.dot(self.__test_image_list[i], self.__weight[j]) / 1000)
+                denominator = 0
+
+                for w in self.__weight:
+                    denominator += math.exp(np.dot(self.__test_image_list[i], w) / 1000)
+
+                score = numerator / float(denominator)
+
                 if score > max_score:
                     max_score = score
                     predicted = j
@@ -155,23 +179,23 @@ class Perceptron():
         #     im = plt.imshow(image, interpolation="nearest")
         #     plt.colorbar(im, norm = norm)
         #     plt.show()
-        #     plt.savefig(str(i) + '00.png')
+            # plt.savefig(str(i) + '.png')
 
-        fig, ax = plt.subplots()
-        t = np.arange(0, self.__round)
-        ax.plot(t, self.__training_curve)
-
-        ax.set(xlabel='echos', ylabel='accuracy',
-               title='Training curve')
-        ax.grid()
-
-        fig.savefig("perceptron_train_curve.png")
-        plt.show()
+        # fig, ax = plt.subplots()
+        # t = np.arange(0, self.__round)
+        # ax.plot(t, self.__training_curve)
+        #
+        # ax.set(xlabel='echos', ylabel='accuracy',
+        #        title='Training curve')
+        # ax.grid()
+        #
+        # fig.savefig("perceptron_train_curve.png")
+        # plt.show()
 
 
 # train data
 
-classifier = Perceptron(1, 1, "fixed", 30, "exponential_decay")
+classifier = Perceptron(1, 1, "fixed", 30, "polinomial_decay")
 classifier.data_reader("digitdata/optdigits-orig_train.txt", "train")
 classifier.train()
 

@@ -1,6 +1,7 @@
 import numpy as np
 import time
 import scipy.spatial as sp
+import sklearn.neighbors as sn
 import heapq as hq
 
 # Perceptron classifier
@@ -8,14 +9,14 @@ import heapq as hq
 class KNN():
 
     def __init__(self, k, sf):
-        self.train_image_list = []
-        self.train_label_list = []
-        self.test_image_list = []
-        self.test_label_list = []
-        self.k = k
-        self.similarity_function = sf
-        self.test_accurate_number = 0
-        self.confusion_matrix = [[0 for col in range(10)] for row in range(10)]
+        self.__train_image_list = []
+        self.__train_label_list = []
+        self.__test_image_list = []
+        self.__test_label_list = []
+        self.__k = k
+        self.__similarity_function = sf
+        self.__test_accurate_number = 0
+        self.__confusion_matrix = [[0 for col in range(10)] for row in range(10)]
 
 
     def data_reader(self, path, mode):
@@ -29,21 +30,21 @@ class KNN():
                     image += list(line)
                 if count == 33:
                     if mode == "train":
-                        self.train_image_list.append(np.array(image, dtype=float))
-                        self.train_label_list.append(int(line))
+                        self.__train_image_list.append(np.array(image, dtype=float))
+                        self.__train_label_list.append(int(line))
                     elif mode == "test":
-                        self.test_image_list.append(np.array(image, dtype=float))
-                        self.test_label_list.append(int(line))
+                        self.__test_image_list.append(np.array(image, dtype=float))
+                        self.__test_label_list.append(int(line))
                     image = []
                     count = 0
         f.close()
 
     def calculate_distance(self, image_a, image_b):
-        if self.similarity_function == "cosine":
+        if self.__similarity_function == "cosine":
             return sp.distance.cosine(image_a, image_b)
-        elif self.similarity_function == "correlation":
+        elif self.__similarity_function == "correlation":
             return sp.distance.correlation(image_a, image_b)
-        elif self.similarity_function == "euclidean":
+        elif self.__similarity_function == "euclidean":
             return sp.distance.euclidean(image_a, image_b)
 
     def find_knn(self, image):
@@ -51,11 +52,11 @@ class KNN():
         heap = []
         knn_list = []
 
-        for i in range(0, len(self.train_label_list)):
-            distance = self.calculate_distance(self.train_image_list[i], image)
-            hq.heappush(heap, (distance, self.train_label_list[i]))
+        for i in range(0, len(self.__train_label_list)):
+            distance = self.calculate_distance(self.__train_image_list[i], image)
+            hq.heappush(heap, (distance, self.__train_label_list[i]))
 
-        for i in range(0, self.k):
+        for i in range(0, self.__k):
             knn_list.append(hq.heappop(heap))
 
         count = np.zeros(10)
@@ -73,31 +74,53 @@ class KNN():
 
     def test(self):
 
-        for i in range(0, len(self.test_label_list)):
-            expected = self.test_label_list[i]
-            predicted = self.find_knn(self.test_image_list[i])
+        for i in range(0, len(self.__test_label_list)):
+            expected = self.__test_label_list[i]
+            predicted = self.find_knn(self.__test_image_list[i])
 
             if expected == predicted:
-                self.test_accurate_number += 1
+                self.__test_accurate_number += 1
 
-            self.confusion_matrix[predicted][expected] += 1
+            self.__confusion_matrix[predicted][expected] += 1
 
     def brute_force_test_for_one_image(self):
 
-        expected = self.test_label_list[0]
-        predicted = self.find_knn(self.test_image_list[0])
+        expected = self.__test_label_list[0]
+        start = time.clock()
+        predicted = self.find_knn(self.__test_image_list[0])
+        print time.clock() - start
+
+    def kd_tree_for_one_image(self):
+
+        expected = self.__test_label_list[0]
+        start = time.clock()
+        tree = sp.cKDTree(self.__train_image_list)
+        print time.clock() - start
+        start = time.clock()
+        predicted = tree.query(self.__test_image_list[0])
+        print time.clock() - start
+
+    def ball_tree_for_one_image(self):
+
+        expected = self.__test_label_list[0]
+        start = time.clock()
+        tree = sn.BallTree(self.__train_image_list)
+        print time.clock() - start
+        start = time.clock()
+        predicted = tree.query(self.__test_image_list[0].reshape(1, len(self.__test_image_list[0])))
+        print time.clock() - start
 
     def calculate_accuracy(self):
 
         print "Overall Accuracy:"
-        print float(self.test_accurate_number) / len(self.test_label_list)
+        print float(self.__test_accurate_number) / len(self.__test_label_list)
 
         print "Confusion Matrix:"
-        print self.confusion_matrix
+        print self.__confusion_matrix
 
         # fig, ax = plt.subplots()
-        # t = np.arange(0, len(self.training_curve))
-        # ax.plot(t, self.training_curve)
+        # t = np.arange(0, len(self.__training_curve))
+        # ax.plot(t, self.__training_curve)
         #
         # ax.set(xlabel='echos', ylabel='accuracy',
         #        title='Training curve')
@@ -108,11 +131,12 @@ class KNN():
 
 # train data
 
-start = time.clock()
 classifier = KNN(3, "cosine")
 classifier.data_reader("digitdata/optdigits-orig_train.txt", "train")
 classifier.data_reader("digitdata/optdigits-orig_test.txt", "test")
 # classifier.test()
-classifier.brute_force_test_for_one_image()
-print time.clock() - start
+# classifier.brute_force_test_for_one_image()
+# classifier.kd_tree_for_one_image()
+classifier.ball_tree_for_one_image()
+
 # classifier.calculate_accuracy()
